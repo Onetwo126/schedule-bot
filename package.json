@@ -1,0 +1,19 @@
+{
+  "name": "schedule-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for work schedule notifications",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "googleapis": "^166.0.0",
+    "node-cron": "^4.6.0",
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}
