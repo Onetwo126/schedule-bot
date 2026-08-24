@@ -10,6 +10,7 @@ export function startReminderScheduler() {
     console.log("⏰ Reminder Scheduler запущен");
 
     setInterval(async () => {
+        try {
         const now = getMoscowTime();
 
         const currentHour = now.getHours();
@@ -100,6 +101,9 @@ export function startReminderScheduler() {
                     error.message
                 );
             }
+        }
+        } catch (error) {
+            console.error("[Scheduler] Ошибка цикла напоминаний:", error.message);
         }
     }, 60 * 1000);
 }

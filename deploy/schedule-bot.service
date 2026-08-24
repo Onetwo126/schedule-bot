@@ -1,0 +1,26 @@
+[Unit]
+Description=Schedule Telegram Bot
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=REPLACE_WITH_LINUX_USER
+WorkingDirectory=REPLACE_WITH_PROJECT_PATH
+Environment=NODE_ENV=production
+Environment=USERS_FILE=/var/lib/schedule-bot/users.json
+ExecStartPre=/usr/bin/test -f .env
+ExecStartPre=/usr/bin/test -f credentials/service-account.json
+ExecStart=REPLACE_WITH_NODE_PATH src/index.js
+Restart=always
+RestartSec=5
+StateDirectory=schedule-bot
+StateDirectoryMode=0700
+UMask=0077
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

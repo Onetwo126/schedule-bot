@@ -4,6 +4,7 @@ import {
     normalizeStaffLogin,
     staffCellContainsLogin,
 } from "../utils/staff-login.util.js";
+import { getMoscowTime } from "../utils/time.util.js";
 
 const SHEET_NAME = "Расписание";
 
@@ -23,7 +24,7 @@ const MONTHS = [
 ];
 
 function getTodayLabel() {
-    const now = new Date();
+    const now = getMoscowTime();
 
     const day = now.getDate();
     const month = MONTHS[now.getMonth()];
@@ -40,8 +41,25 @@ function isDateCell(value) {
 }
 
 function isTimeCell(value) {
-    return /^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$/.test(
-        String(value ?? "").trim()
+    const match = String(value ?? "")
+        .trim()
+        .match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+
+    if (!match) {
+        return false;
+    }
+
+    const [, startHour, startMinute, endHour, endMinute] = match.map(Number);
+
+    return (
+        startHour >= 0 &&
+        startHour <= 23 &&
+        endHour >= 0 &&
+        endHour <= 23 &&
+        startMinute >= 0 &&
+        startMinute <= 59 &&
+        endMinute >= 0 &&
+        endMinute <= 59
     );
 }
 
@@ -170,20 +188,21 @@ export async function getTodaySchedule(login) {
             break;
         }
 
-        if (!activity || !String(activity).trim()) {
-            const time = row[dateColumn];
-
-            if (!time) {
-                break;
-            }
-
-            continue;
-        }
-
         const time = row[dateColumn];
 
         if (!time) {
             break;
+        }
+
+        if (!isTimeCell(time)) {
+            console.warn(
+                `[Schedule] Пропущена строка ${rowIndex + 1}: некорректное время "${String(time)}".`
+            );
+            continue;
+        }
+
+        if (!activity || !String(activity).trim()) {
+            continue;
         }
 
         schedule.push({

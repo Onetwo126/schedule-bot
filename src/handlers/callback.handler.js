@@ -4,6 +4,7 @@ import { getCurrentActivityMessage } from "../services/activity.service.js";
 
 export function registerCallBackHandlers(bot) {
     bot.on("callback_query", async (query) => {
+        try {
         const chatId = query.message.chat.id;
 
         await bot.answerCallbackQuery(query.id);
@@ -87,6 +88,9 @@ export function registerCallBackHandlers(bot) {
 
                 break;
             }
+        }
+        } catch (error) {
+            console.error("[CallbackHandler] Ошибка обработки кнопки:", error.message);
         }
     });
 }

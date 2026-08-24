@@ -8,6 +8,7 @@ import {
 
 export function registerMessageHandler(bot) {
     bot.on("message", async (msg) => {
+        try {
         const chatId = msg.chat.id;
 
         if (!msg.text) {
@@ -55,5 +56,8 @@ export function registerMessageHandler(bot) {
                 parse_mode: "HTML",
             }
         );
+        } catch (error) {
+            console.error("[MessageHandler] Ошибка обработки сообщения:", error.message);
+        }
     });
 }

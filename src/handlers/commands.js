@@ -4,6 +4,7 @@ import { waitForStaffLogin } from "../utils/user-state.js";
 
 export function registerCommands(bot) {
     bot.onText(/^\/start$/, async (msg) => {
+        try {
         const chatId = msg.chat.id;
 
         const user = usersService.getUser(chatId);
@@ -30,5 +31,8 @@ export function registerCommands(bot) {
             parse_mode: "HTML"
             }
         );
+        } catch (error) {
+            console.error("[Commands] Ошибка обработки /start:", error.message);
+        }
     });
 }
