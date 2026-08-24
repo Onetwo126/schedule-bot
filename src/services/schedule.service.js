@@ -1,4 +1,9 @@
 import { sheets } from "./google.sheets.js";
+import {
+    isStaffCell,
+    normalizeStaffLogin,
+    staffCellContainsLogin,
+} from "../utils/staff-login.util.js";
 
 const SHEET_NAME = "Расписание";
 
@@ -17,13 +22,6 @@ const MONTHS = [
     "дек.",
 ];
 
-function normalizeLogin(login) {
-    return login
-        .trim()
-        .replace(/^@/, "")
-        .toLowerCase();
-}
-
 function getTodayLabel() {
     const now = new Date();
 
@@ -39,10 +37,6 @@ function isDateCell(value) {
     return /^\d{1,2}\s+(янв\.|фев\.|мар\.|апр\.|мая|июн\.|июл\.|авг\.|сент\.|окт\.|нояб\.|дек\.)$/.test(
         text
     );
-}
-
-function isStaffCell(value) {
-    return /@[a-zA-Z0-9_]+/.test(String(value ?? ""));
 }
 
 function isTimeCell(value) {
@@ -63,8 +57,6 @@ function findDateRow(rows, dateLabel) {
 }
 
 function findEmployeeStart(rows, dateRow, dateColumn, login) {
-    const target = `@${normalizeLogin(login)}`;
-
     const headerRow = rows[dateRow] ?? [];
 
     // Правая граница сегодняшнего блока:
@@ -84,9 +76,7 @@ function findEmployeeStart(rows, dateRow, dateColumn, login) {
         columnIndex < endColumn;
         columnIndex++
     ) {
-        const value = String(headerRow[columnIndex] ?? "").toLowerCase();
-
-        if (value.includes(target)) {
+        if (staffCellContainsLogin(headerRow[columnIndex], login)) {
             return {
                 rowIndex: dateRow,
                 columnIndex,
@@ -114,9 +104,7 @@ function findEmployeeStart(rows, dateRow, dateColumn, login) {
             columnIndex < endColumn;
             columnIndex++
         ) {
-            const value = String(row[columnIndex] ?? "").toLowerCase();
-
-            if (value.includes(target)) {
+            if (staffCellContainsLogin(row[columnIndex], login)) {
                 return {
                     rowIndex,
                     columnIndex,
@@ -207,7 +195,7 @@ export async function getTodaySchedule(login) {
     return {
         status: "OK",
         date: todayLabel,
-        staffLogin: normalizeLogin(login),
+        staffLogin: normalizeStaffLogin(login),
         schedule,
     };
 }
