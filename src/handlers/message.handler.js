@@ -1,5 +1,4 @@
-import { usersService } from "../services/users.service.js";
-import { staffLoginExists } from "../services/google.sheets.js";
+import { botApplication } from "../application/bot.application.js";
 import { mainKeyboard } from "../keyboards/main.keyboard.js";
 import {
     isWaitingForStaffLogin,
@@ -25,9 +24,12 @@ export function registerMessageHandler(bot) {
 
         const staffLogin = msg.text.trim();
 
-        const exists = await staffLoginExists(staffLogin);
+        const savedUser = botApplication.changeStaffLogin(
+            { messenger: "telegram", externalUserId: chatId },
+            staffLogin
+        );
 
-        if (!exists) {
+        if (!savedUser) {
             await bot.sendMessage(
                 chatId,
                 "❌ Такой логин не найден.\n\nПопробуй ввести ещё раз"
@@ -35,8 +37,6 @@ export function registerMessageHandler(bot) {
 
             return;
         }
-
-        usersService.saveUser(chatId, staffLogin);
 
         stopWaitingForStaffLogin(chatId);
 

@@ -1,17 +1,16 @@
-import { usersService } from "../services/users.service.js";
-import { getTodaySchedule } from "../services/schedule.service.js";
-import { getCurrentActivityMessage } from "../services/activity.service.js";
+import { botApplication } from "../application/bot.application.js";
 
 export function registerCallBackHandlers(bot) {
     bot.on("callback_query", async (query) => {
         try {
         const chatId = query.message.chat.id;
+        const identity = { messenger: "telegram", externalUserId: chatId };
 
         await bot.answerCallbackQuery(query.id);
 
         switch (query.data) {
             case "current_activity": {
-                const user = usersService.getUser(chatId);
+                const user = botApplication.getUser(identity);
 
                 if (!user) {
                     await bot.sendMessage(
@@ -21,7 +20,7 @@ export function registerCallBackHandlers(bot) {
                     break;
                 }
 
-                const message = await getCurrentActivityMessage(user.staff_login);
+                const message = await botApplication.getCurrentActivityMessage(identity);
 
                 await bot.sendMessage(chatId, message, {
                     parse_mode: "HTML",
@@ -31,7 +30,7 @@ export function registerCallBackHandlers(bot) {
             }
 
             case "today_schedule": {
-                const user = usersService.getUser(chatId);
+                const user = botApplication.getUser(identity);
 
                 if (!user) {
                     await bot.sendMessage(
@@ -41,7 +40,7 @@ export function registerCallBackHandlers(bot) {
                     break;
                 }
 
-                const result = await getTodaySchedule(user.staff_login);
+                const result = botApplication.getTodaySchedule(identity);
 
                 if (result.status === "DATE_NOT_FOUND") {
                     await bot.sendMessage(

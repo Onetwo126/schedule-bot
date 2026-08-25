@@ -1,26 +1,45 @@
-import { usersService } from "../services/users.service.js";
 import { getTodaySchedule } from "../services/schedule.service.js";
 import { getMoscowTime } from "../utils/time.util.js";
-import { bot } from "../bot/bot.js";
 import { getCurrentAndNextActivity } from "../services/activity.service.js";
+import { scheduleCache } from "../services/schedule-cache.service.js";
 
 const sentReminders = new Set();
 
-export function startReminderScheduler() {
+export function startReminderScheduler(options) {
     console.log("⏰ Reminder Scheduler запущен");
 
-    setInterval(async () => {
+    return setInterval(() => runReminderCycle(options), 60 * 1000);
+}
+
+export async function runReminderCycle({
+    cache = scheduleCache,
+    userService,
+    messenger,
+    scheduleProvider = getTodaySchedule,
+} = {}) {
+    try {
         try {
+            await cache.refresh();
+        } catch (error) {
+            if (!cache.hasRows()) {
+                throw error;
+            }
+            console.error("[Scheduler] Google Sheets недоступен, используется последний кэш:", error.message);
+        }
         const now = getMoscowTime();
 
         const currentHour = now.getHours();
         const currentMinute = now.getMinutes();
 
-        const users = usersService.getAllUsers();
+        const users = userService.getAllUsers();
 
-        for (const [telegramId, user] of Object.entries(users)) {
+        for (const user of users) {
+            if (user.messenger !== "telegram") {
+                continue;
+            }
+            const telegramId = user.external_user_id;
             try {
-                const scheduleResult = await getTodaySchedule(user.staff_login);
+                const scheduleResult = await scheduleProvider(user.staff_login);
 
                 if (scheduleResult.status !== "OK") {
                     console.log(
@@ -84,7 +103,7 @@ export function startReminderScheduler() {
                     ? `⏰ <b>ТЫК. До свободы 3 минуты.</b>\nСворачиваем хлебную лавочку и заполняем табличку 🍞`
                     : `🔔 Через 3 минуты начинается:\n\n${reminderActivity.time}\n${reminderActivity.activity}`;
 
-                await bot.sendMessage(
+                await messenger.sendMessage(
                     telegramId,
                     message,
                     {
@@ -102,8 +121,7 @@ export function startReminderScheduler() {
                 );
             }
         }
-        } catch (error) {
-            console.error("[Scheduler] Ошибка цикла напоминаний:", error.message);
-        }
-    }, 60 * 1000);
+    } catch (error) {
+        console.error("[Scheduler] Ошибка цикла напоминаний:", error.message);
+    }
 }

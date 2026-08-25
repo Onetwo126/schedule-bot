@@ -3,47 +3,39 @@ import assert from "node:assert/strict";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { createSqliteRepositories } from "../src/repositories/sqlite.repositories.js";
 
-test("keeps all users during nearly simultaneous registrations", async () => {
-    const temporaryDirectory = fs.mkdtempSync(
-        path.join(os.tmpdir(), "schedule-bot-users-")
-    );
-    const usersFile = path.join(temporaryDirectory, "users.json");
-    const previousUsersFile = process.env.USERS_FILE;
+test("migrates legacy users and restores them after reopening SQLite", () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "schedule-bot-users-"));
+    const databaseFile = path.join(directory, "users.db");
+    const legacyUsersFile = path.join(directory, "users.json");
+    fs.writeFileSync(legacyUsersFile, JSON.stringify({ "123": { staff_login: "tanya" } }));
 
-    process.env.USERS_FILE = usersFile;
+    const first = createSqliteRepositories({ databaseFile, legacyUsersFile });
+    assert.equal(first.importedUsers, 1);
+    assert.equal(first.userRepository.getByExternalId("telegram", "123").staff_login, "tanya");
+    first.database.close();
 
-    try {
-        const { usersService } = await import(
-            `../src/services/users.service.js?test=${Date.now()}`
-        );
+    const second = createSqliteRepositories({ databaseFile, legacyUsersFile });
+    assert.equal(second.importedUsers, 0);
+    assert.equal(second.userRepository.getByExternalId("telegram", "123").staff_login, "tanya");
+    second.database.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+});
 
-        await Promise.all(
-            Array.from({ length: 20 }, (_, index) =>
-                Promise.resolve().then(() =>
-                    usersService.saveUser(index, `employee_${index}`)
-                )
-            )
-        );
+test("stores knowledge base and settings behind repository interfaces", () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "schedule-bot-settings-"));
+    const repositories = createSqliteRepositories({ databaseFile: path.join(directory, "users.db") });
+    const user = repositories.userRepository.save({
+        messenger: "telegram",
+        external_user_id: "456",
+        staff_login: "employee",
+        knowledge_base: "support",
+    });
+    repositories.settingsRepository.set(user.id, "reminder_minutes", 3);
 
-        const savedUsers = JSON.parse(
-            fs.readFileSync(usersFile, "utf-8")
-        );
-
-        assert.equal(Object.keys(savedUsers).length, 20);
-        assert.equal(savedUsers["0"].staff_login, "employee_0");
-        assert.equal(savedUsers["19"].staff_login, "employee_19");
-        assert.deepEqual(
-            fs.readdirSync(temporaryDirectory),
-            ["users.json"]
-        );
-    } finally {
-        if (previousUsersFile === undefined) {
-            delete process.env.USERS_FILE;
-        } else {
-            process.env.USERS_FILE = previousUsersFile;
-        }
-
-        fs.rmSync(temporaryDirectory, { recursive: true, force: true });
-    }
+    assert.equal(user.knowledge_base, "support");
+    assert.equal(repositories.settingsRepository.get(user.id, "reminder_minutes"), 3);
+    repositories.database.close();
+    fs.rmSync(directory, { recursive: true, force: true });
 });

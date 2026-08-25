@@ -10,6 +10,7 @@ Type=simple
 User=reventonrap
 WorkingDirectory=/home/reventonrap/schedule-bot
 Environment=NODE_ENV=production
+Environment=USERS_DB=/var/lib/schedule-bot/schedule-bot.db
 Environment=USERS_FILE=/var/lib/schedule-bot/users.json
 ExecStartPre=/usr/bin/test -f .env
 ExecStartPre=/usr/bin/test -f credentials/service-account.json

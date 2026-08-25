@@ -1,81 +1,49 @@
-import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createSqliteRepositories } from "../repositories/sqlite.repositories.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const USERS_FILE = process.env.USERS_FILE
-    ? path.resolve(process.env.USERS_FILE)
-    : path.join(__dirname, "../../data/users.json");
+const repositories = createSqliteRepositories({
+    databaseFile: process.env.USERS_DB ?? path.join(__dirname, "../../data/schedule-bot.db"),
+    legacyUsersFile: process.env.USERS_FILE ?? path.join(__dirname, "../../data/users.json"),
+});
 
-function readUsers() {
-    let raw;
-
-    try {
-        raw = fs.readFileSync(USERS_FILE, "utf-8");
-    } catch (error) {
-        if (error.code === "ENOENT") {
-            return {};
-        }
-
-        throw error;
-    }
-
-    if (!raw.trim()) {
-        return {};
-    }
-
-    return JSON.parse(raw);
+if (repositories.importedUsers > 0) {
+    console.log(`✅ Из JSON в SQLite перенесено пользователей: ${repositories.importedUsers}`);
 }
 
-function writeUsers(users) {
-    const usersDirectory = path.dirname(USERS_FILE);
-    const temporaryFile = `${USERS_FILE}.${process.pid}.${Date.now()}.tmp`;
-
-    fs.mkdirSync(usersDirectory, { recursive: true });
-
-    try {
-        fs.writeFileSync(
-            temporaryFile,
-            JSON.stringify(users, null, 2),
-            {
-                encoding: "utf-8",
-                mode: 0o600,
-            }
-        );
-        fs.renameSync(temporaryFile, USERS_FILE);
-    } finally {
-        if (fs.existsSync(temporaryFile)) {
-            fs.unlinkSync(temporaryFile);
-        }
-    }
+function normalizeIdentity(identity) {
+    return typeof identity === "object"
+        ? identity
+        : { messenger: "telegram", externalUserId: identity };
 }
 
-function getUser(telegramId) {
-    const users = readUsers();
-
-    return users[String(telegramId)] ?? null;
+function getUser(identity) {
+    const normalized = normalizeIdentity(identity);
+    return repositories.userRepository.getByExternalId(
+        normalized.messenger,
+        normalized.externalUserId
+    );
 }
 
 function userExists(telegramId) {
     return getUser(telegramId) !== null;
 }
 
-function saveUser(telegramId, staffLogin) {
-    const users = readUsers();
-
-    users[String(telegramId)] = {
+function saveUser(identity, staffLogin, extra = {}) {
+    const normalized = normalizeIdentity(identity);
+    return repositories.userRepository.save({
+        messenger: normalized.messenger,
+        external_user_id: String(normalized.externalUserId),
         staff_login: staffLogin,
-    };
-
-    writeUsers(users);
-
-    return users[String(telegramId)];
+        knowledge_base: extra.knowledge_base ?? null,
+    });
 }
 
 function getAllUsers() {
-    return readUsers();
+    return repositories.userRepository.getAll();
 }
 
 export const usersService = {
@@ -83,4 +51,5 @@ export const usersService = {
     getAllUsers,
     userExists,
     saveUser,
+    settings: repositories.settingsRepository,
 };

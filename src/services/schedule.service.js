@@ -1,12 +1,10 @@
-import { sheets } from "./google.sheets.js";
+import { scheduleCache } from "./schedule-cache.service.js";
 import {
     isStaffCell,
     normalizeStaffLogin,
     staffCellContainsLogin,
 } from "../utils/staff-login.util.js";
 import { getMoscowTime } from "../utils/time.util.js";
-
-const SHEET_NAME = "Расписание";
 
 const MONTHS = [
     "янв.",
@@ -134,14 +132,7 @@ function findEmployeeStart(rows, dateRow, dateColumn, login) {
     return null;
 }
 
-export async function getTodaySchedule(login) {
-    const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: process.env.GOOGLE_SHEET_ID,
-        range: `'${SHEET_NAME}'`,
-    });
-
-    const rows = response.data.values ?? [];
-
+export function getTodayScheduleFromRows(rows, login) {
     const todayLabel = getTodayLabel();
 
     const dateRow = findDateRow(rows, todayLabel);
@@ -217,4 +208,8 @@ export async function getTodaySchedule(login) {
         staffLogin: normalizeStaffLogin(login),
         schedule,
     };
+}
+
+export function getTodaySchedule(login) {
+    return getTodayScheduleFromRows(scheduleCache.getRows(), login);
 }

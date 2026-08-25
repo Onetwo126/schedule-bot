@@ -27,15 +27,17 @@ export const sheets = google.sheets({
     auth,
 });
 
-export async function staffLoginExists(staffLogin) {
-    const login = normalizeStaffLogin(staffLogin);
-
+export async function fetchScheduleRows() {
     const response = await sheets.spreadsheets.values.get({
         spreadsheetId: config.GOOGLE_SHEET_ID,
         range: `'${SHEET_NAME}'`,
     });
 
-    const rows = response.data.values ?? [];
+    return response.data.values ?? [];
+}
+
+export function staffLoginExistsInRows(rows, staffLogin) {
+    const login = normalizeStaffLogin(staffLogin);
 
     return rows.some((row) =>
         row.some((cell) =>

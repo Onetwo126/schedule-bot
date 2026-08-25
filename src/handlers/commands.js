@@ -1,5 +1,5 @@
 import { mainKeyboard } from "../keyboards/main.keyboard.js";
-import { usersService } from "../services/users.service.js";
+import { botApplication } from "../application/bot.application.js";
 import { waitForStaffLogin } from "../utils/user-state.js";
 
 export function registerCommands(bot) {
@@ -7,7 +7,7 @@ export function registerCommands(bot) {
         try {
         const chatId = msg.chat.id;
 
-        const user = usersService.getUser(chatId);
+        const user = botApplication.getUser({ messenger: "telegram", externalUserId: chatId });
 
         if (!user) {
             waitForStaffLogin(chatId);
@@ -34,5 +34,11 @@ export function registerCommands(bot) {
         } catch (error) {
             console.error("[Commands] Ошибка обработки /start:", error.message);
         }
+    });
+
+    bot.onText(/^\/login$/, async (msg) => {
+        const chatId = msg.chat.id;
+        waitForStaffLogin(chatId);
+        await bot.sendMessage(chatId, "Введи новый логин сотрудника. Текущий логин останется сохранён, пока новый не пройдёт проверку.");
     });
 }
