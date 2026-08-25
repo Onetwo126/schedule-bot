@@ -7,13 +7,13 @@ StartLimitBurst=10
 
 [Service]
 Type=simple
-User=REPLACE_WITH_LINUX_USER
-WorkingDirectory=REPLACE_WITH_PROJECT_PATH
+User=reventonrap
+WorkingDirectory=/home/reventonrap/schedule-bot
 Environment=NODE_ENV=production
 Environment=USERS_FILE=/var/lib/schedule-bot/users.json
 ExecStartPre=/usr/bin/test -f .env
 ExecStartPre=/usr/bin/test -f credentials/service-account.json
-ExecStart=REPLACE_WITH_NODE_PATH src/index.js
+ExecStart=/usr/bin/node src/index.js
 Restart=always
 RestartSec=5
 StateDirectory=schedule-bot
